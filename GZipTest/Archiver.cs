@@ -28,7 +28,7 @@ namespace GZipTest
 		}
 
 		public void Compress(string inputFilePath, string outputFilePath)
-		{	
+		{
 			Process(inputFilePath, outputFilePath, Read, WriteCompressed, CompressBlock);
 		}
 

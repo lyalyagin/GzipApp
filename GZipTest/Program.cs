@@ -7,11 +7,6 @@ namespace GZipTest
 	{
 		static int Main(string[] args)
 		{
-			args = new string[3];
-			args[0] = @"decompress";
-			args[2] = @"F:\Test2.txt";
-			args[1] = @"F:\result.gz";
-
 			int result = -1;
 
 			ConsoleArgumentValidator.Validate(args);
