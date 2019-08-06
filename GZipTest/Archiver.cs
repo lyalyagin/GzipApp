@@ -67,6 +67,7 @@ namespace GZipTest
 
 			while (!_isReadFinished || inputBlocks.Count > 0)
 			{
+				// two threads are used by read and write methods + main thread
 				for (int i = 0; i < Environment.ProcessorCount - 2; i++)
 				{
 					Thread thread = new Thread(() => ThreadHelper.SafeExecute(() =>
@@ -92,7 +93,7 @@ namespace GZipTest
 			writeThread.Join();
 
 			if (exeption != null)
-				throw new Exception();
+				throw new Exception(exeption.Message);
 		}
 
 		private void CompressBlock(CustomConcurentQueue outputBlocks, KeyValuePair<int, byte[]> block)
@@ -106,7 +107,6 @@ namespace GZipTest
 
 				byte[] compressedData = _memoryStream.ToArray();
 				outputBlocks.Add(block.Key, compressedData);
-				Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
 			}
 		}
 
@@ -128,7 +128,6 @@ namespace GZipTest
 					outputBlocks.Add(block.Key, decompressedData);
 				}
 			}
-
 		}
 
 		private void Read(CustomConcurentQueue inputBlocks, string inputFilePath)
