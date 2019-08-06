@@ -9,6 +9,17 @@ namespace GZipTest
 		private readonly SortedDictionary<int, byte[]> _blocks;
 		private readonly object _lock = new object();
 
+		public int Count
+		{
+			get
+			{
+				lock (_lock)
+				{
+					return _blocks.Count;
+				}
+			}
+		}
+
 		public CustomConcurentQueue()
 		{
 			_blocks = new SortedDictionary<int, byte[]>();
@@ -36,14 +47,6 @@ namespace GZipTest
 				_blocks.Remove(blockKey);
 
 				return block;
-			}
-		}
-
-		public int Count()
-		{
-			lock (_lock)
-			{
-				return _blocks.Count;
 			}
 		}
 

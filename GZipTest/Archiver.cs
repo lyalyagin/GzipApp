@@ -13,7 +13,11 @@ namespace GZipTest
 	public class Archiver : IArchiver
 	{
 		private readonly int _blockSize;
+		private readonly int _safeElementsCounts;
 		private const int DEFAULT_BLOCK_SIZE = 1000000;
+		private const int DEFAULT_SAFE_ELEMENTCOUNT_SIZE = 1000;
+		private bool _isReadFinished = false;
+		private bool _isProcessing = false;
 
 		public Archiver()
 		{
@@ -24,6 +28,15 @@ namespace GZipTest
 			else
 			{
 				_blockSize = DEFAULT_BLOCK_SIZE;
+			}
+
+			if (int.TryParse(ConfigurationManager.AppSettings["safeElementsCount"], out int safeElementsCount))
+			{
+				_safeElementsCounts = safeElementsCount;
+			}
+			else
+			{
+				_blockSize = DEFAULT_SAFE_ELEMENTCOUNT_SIZE;
 			}
 		}
 
@@ -44,13 +57,17 @@ namespace GZipTest
 			CustomConcurentQueue inputBlocks = new CustomConcurentQueue();
 			CustomConcurentQueue outputBlocks = new CustomConcurentQueue();
 
-			readAction(inputBlocks, inputFilePath);
+			Exception exeption = null;
 
-			while (inputBlocks.Count() > 0)
+			Thread readThread = new Thread(() => ThreadHelper.SafeExecute(() => readAction(inputBlocks, inputFilePath), out exeption));
+			readThread.Start();
+
+			Thread writeThread = new Thread(() => ThreadHelper.SafeExecute(() => writeAction(outputBlocks, outputFilePath), out exeption));
+			writeThread.Start();
+
+			while (!_isReadFinished || inputBlocks.Count > 0)
 			{
-				Exception exeption = null;
-
-				for (int i = 0; i < Environment.ProcessorCount; i++)
+				for (int i = 0; i < Environment.ProcessorCount - 2; i++)
 				{
 					Thread thread = new Thread(() => ThreadHelper.SafeExecute(() =>
 					{
@@ -63,15 +80,19 @@ namespace GZipTest
 					}, out exeption));
 
 					thread.Start();
-
 					thread.Join();
 
 					if (exeption != null)
-						throw new Exception();
+						throw new Exception(exeption.Message);
 				}
 			}
 
-			writeAction(outputBlocks, outputFilePath);
+			_isProcessing = true;
+
+			writeThread.Join();
+
+			if (exeption != null)
+				throw new Exception();
 		}
 
 		private void CompressBlock(CustomConcurentQueue outputBlocks, KeyValuePair<int, byte[]> block)
@@ -120,6 +141,9 @@ namespace GZipTest
 
 				while (_fileToBeCompressed.Position < _fileToBeCompressed.Length)
 				{
+					if (inputBlocks.Count > _safeElementsCounts)
+						continue;
+
 					if (_fileToBeCompressed.Length - _fileToBeCompressed.Position <= _blockSize)
 					{
 						bytesRead = (int)(_fileToBeCompressed.Length - _fileToBeCompressed.Position);
@@ -135,6 +159,8 @@ namespace GZipTest
 					blockIndex++;
 				}
 			}
+
+			_isReadFinished = true;
 		}
 
 		private void ReadCompressed(CustomConcurentQueue inputBlocks, string inputFilePath)
@@ -145,6 +171,9 @@ namespace GZipTest
 			{
 				while (_compressedFile.Position < _compressedFile.Length)
 				{
+					if (inputBlocks.Count > _safeElementsCounts)
+						continue;
+
 					byte[] lengthBuffer = new byte[8];
 					_compressedFile.Read(lengthBuffer, 0, lengthBuffer.Length);
 					int blockLength = BitConverter.ToInt32(lengthBuffer, 4);
@@ -158,14 +187,19 @@ namespace GZipTest
 
 				}
 			}
+
+			_isReadFinished = true;
 		}
 
 		private void Write(CustomConcurentQueue outputBlocks, string outputFilePath)
 		{
 			using (var writer = new BinaryWriter(File.Open(outputFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None)))
 			{
-				while (outputBlocks.Count() > 0)
+				while (outputBlocks.Count > 0 || !_isProcessing)
 				{
+					if (outputBlocks.Count == 0)
+						continue;
+
 					writer.BaseStream.Seek(0, SeekOrigin.End);
 					var bytes = outputBlocks.GetNext();
 					writer.Write(bytes.Value);
@@ -177,8 +211,11 @@ namespace GZipTest
 		{
 			using (FileStream _fileCompressed = new FileStream(outputFilePath + ".gz", FileMode.Append))
 			{
-				while (outputBlocks.Count() > 0)
+				while (!_isProcessing || outputBlocks.Count > 0)
 				{
+					if (outputBlocks.Count == 0)
+						continue;
+
 					var block = outputBlocks.GetNext();
 
 					BitConverter.GetBytes(block.Value.Length).CopyTo(block.Value, 4);
