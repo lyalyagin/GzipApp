@@ -11,27 +11,33 @@ namespace GZipTest
 
 			ConsoleArgumentValidator.Validate(args);
 
-			IArchiver archiver = new Archiver();
+			GZipArchiver archiver;
 
 			try
 			{
 				switch (args[0].ToLower())
 				{
 					case "compress":
-						archiver.Compress(args[1], args[2]);
+						archiver = new Compressor(args[1], args[2]);
 						break;
 					case "decompress":
-						archiver.Decompress(args[1], args[2]);
+						archiver = new Decompressor(args[1], args[2]);
 						break;
+					default: throw new ArgumentException("Action has not been provided");
 				}
 
-				result = 1;
+				var watch = System.Diagnostics.Stopwatch.StartNew();
+				archiver.Process();
+				watch.Stop();
+				TimeSpan ts = watch.Elapsed;
+
+				result = 0;
 			}
 			catch (Exception ex)
 			{
 				Console.WriteLine($"Error has been occurred: {ex.Message}");
 
-				result = 0;
+				result = 1;
 			}
 
 			return result;

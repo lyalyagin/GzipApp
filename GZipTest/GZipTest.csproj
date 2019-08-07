@@ -44,11 +44,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Archiver.cs" />
+    <Compile Include="Compressor.cs" />
     <Compile Include="CustomConcurentCollection.cs" />
+    <Compile Include="Decompressor.cs" />
+    <Compile Include="GZipArchiver.cs" />
     <Compile Include="Helpers\ConsoleArgumentValidator.cs" />
     <Compile Include="Helpers\ThreadHelper.cs" />
-    <Compile Include="IArchiver.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

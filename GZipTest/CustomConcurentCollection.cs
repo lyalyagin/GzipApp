@@ -20,6 +20,19 @@ namespace GZipTest
 			}
 		}
 
+		public KeyValuePair<int, byte[]> GetByIndex(int index)
+		{
+			lock (_lock)
+			{
+				var block = _blocks.FirstOrDefault(b => b.Key == index);
+
+				_blocks.Remove(block.Key);
+
+				return block;
+			}
+			
+		}
+
 		public CustomConcurentQueue()
 		{
 			_blocks = new SortedDictionary<int, byte[]>();
@@ -40,21 +53,11 @@ namespace GZipTest
 		{
 			lock (_lock)
 			{
-				var blockKey = _blocks.Keys.FirstOrDefault();
+				var block = _blocks.FirstOrDefault();
 
-				var block = _blocks.FirstOrDefault(b =>b.Key == blockKey);
-
-				_blocks.Remove(blockKey);
+				_blocks.Remove(block.Key);
 
 				return block;
-			}
-		}
-
-		public void Clear()
-		{
-			lock (_lock)
-			{
-				_blocks.Clear();
 			}
 		}
 	}
