@@ -26,10 +26,7 @@ namespace GZipTest
 					default: throw new ArgumentException("Action has not been provided");
 				}
 
-				var watch = System.Diagnostics.Stopwatch.StartNew();
 				archiver.Process();
-				watch.Stop();
-				TimeSpan ts = watch.Elapsed;
 
 				result = 0;
 			}
